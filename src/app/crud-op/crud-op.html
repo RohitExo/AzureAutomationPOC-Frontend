@@ -1,0 +1,47 @@
+<div class="table-container">
+    <div class="add">
+        <mds-button [iconButtonIcon]="'add'" [label]="'Add Employee'" [variant]="'icon-filled'" [color]="'primary'"
+            (clickEvent)="FormOpen()"></mds-button>
+    </div>
+    <div>
+        <mds-table class="table" style="margin-top: 64px;" [dataSource]="dataSource" [dataColumns]="dataCols"
+            [displayedColumns]="displayCols">
+            <ng-template mds-table-column="action" let-row>
+                <mds-button [iconButtonIcon]="'Edit'" [variant]="'icon-outline'" [color]="'neutral'"
+                    (clickEvent)="onUpdate(row)"></mds-button>
+                <mds-button [iconButtonIcon]="'Delete'" [variant]="'icon-outline'" [color]="'warn'"
+                    (clickEvent)="onDelete(row)"></mds-button>
+            </ng-template>
+        </mds-table>
+    </div>
+
+    <div *ngIf="showForm" #empModal class="form-wrapper" style="height: 50vh; margin-top:20px;">
+        <form [formGroup]="employeeForm" (ngSubmit)="onSubmit()">
+            <div class="form">
+                <mds-text-field formControlName="employeeId" ngDefaultControl [label]="'Employee ID'"
+                    [placeholder]="'Enter Employee ID'">
+                </mds-text-field>
+                <mds-dropdown-new [multiple]="false" [options]="[{value: 'Director', viewValue: 'Director'}, 
+                    {value: 'Manager', viewValue: 'Manager'}, 
+                    {value: 'Senior Associate', viewValue: 'Senior Associate'}, 
+                    {value: 'Associate', viewValue: 'Associate'}, 
+                    {value: 'SDE 1', viewValue: 'SDE 1'}, 
+                    {value: 'Intern', viewValue: 'Intern'}]" [placeholder]="'Select Designation'"
+                    formControlName="designation" [label]="'Designation'" [closeOnPageScroll]="true"
+                    [required]="true"></mds-dropdown-new>
+                <mds-text-field formControlName="salary" ngDefaultControl [label]="'Salary'"
+                    [placeholder]="'Enter your Salary'" [hint]="'Eg: 120K$'">
+                </mds-text-field>
+                <mds-text-field formControlName="experience" ngDefaultControl [label]="'Experience'"
+                    [placeholder]="'Enter your Experience'">
+                </mds-text-field>
+
+
+                <mds-button style="margin-top: 10px;" [disableRipple]="false" [label]="'Submit'" [variant]="'primary'"
+                    [color]="'primary'" [type]="'submit'"></mds-button>
+                <mds-button style="margin-top: 10px;" [disableRipple]="false" [label]="'Cancel'" [variant]="'tonal'"
+                    [color]="'neutral'" (clickEvent)="FormClose()"></mds-button>
+            </div>
+        </form>
+    </div>
+</div>

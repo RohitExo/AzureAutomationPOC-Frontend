@@ -1,0 +1,247 @@
+
+TITLE: Internal KT Session : Application Hosting on Azure (IAC - bicep & YAML)
+
+prerequisite:
+1. application is running locally
+2. A GitHub account and a repository.
+3. An Azure account with an active subscription.
+4. Project is added on github repos (seperate repo)
+
+WHY ? - IAC 
+
+Steps To Implement:
+1. Create service connection between Azure subscription & Github Repo
+2. Save Service Connection secrets in github repo
+3. Estimations & Costing for the resources required on Deployment & hosting
+	3.1 Resource plan - appService Plan Or container Plan
+4. Create the IaC Template (BICEP OR Terraform)
+	4.1 Template Structure, alternative to JSON Files
+5. For each repo on github, Create the GitHub Actions Workflow 
+	5.1 Setup workflow & syntax
+	5.2 Github action VM & Runner
+	
+	
+Challenges:
+1. Medpace restricts private repos to have their own runner for actions to perform
+2. Costing mishap leading to costing the subscription more especially sql instance
+3. VNet Implementation - subNets assigning to resources(allocate a portion of the VNet's address space (e.g., 10.0.1.0/24) as subnet reserves 4 port address from asssigned address)
+4. DACPAC yaml implementation
+5. Angular code publish file - mishap as github actions VM is not storing dist/publish file & difficult to retrive it from stored files. 
+	Resolution: Combined build & deploy pipeline into one.
+6. MDS package cause my yml file to fail while build job was running.
+
+
+PAAS VS IAC
+1. IAC:enabling reproducible deployments across environments (development, testing, production). Automated scripts eliminate manual setup errors and environment drift 
+	PAAS: Reproducing exact environments across multiple regions or tenants can be less precise.
+2. Changes can be tracked in IAC using VCS (GITHUB) where as in PAAS lacks native versioning
+	PaaS abstracts much of the infrastructure, which limits direct integration with CI/CD automation for low-level infrastructure management tasks.
+3. IAC : IaC works on top of IaaS or PaaS services but allows full control over server provisioning, network topology, storage configuration, and security policies. Gives chances to customization.
+	PAAS: Limits user to pre configured stack and service options. For example, runtime environments, scaling policies, and firewall rules may not be fully configurable.
+4. Scaling :IaC enables rapid scaling through automated scripts. Scaling, multi-region deployments, or ephemeral environments can be provisioned programmatically.
+	PaaS handles scaling automatically for its managed services but usually within predefined limits and less granular control.
+	
+IAC:
+(Infrastructure as Code) is the practice of provisioning and managing Azure resources (such as virtual machines, networks, and databases) using machine-readable configuration files and code rather than manual configuration with the Azure portal.
+LINK: https://learn.microsoft.com/en-us/devops/deliver/what-is-infrastructure-as-code
+
+Continuous Integration (CI)
+CI is the automation process of building and testing code every time a team member commits changes to a shared version control repository. The goal is to detect integration issues early and quickly.
+Continuous Deployment: The entire process is fully automated, from code commit to production deployment, without manual intervention, provided all automated tests pass. This approach requires a very robust automated testing suite https://learn.microsoft.com/en-us/devops/deliver/what-is-continuous-delivery
+
+PART 1 
+Service Connection:
+App registration in Azure (within Microsoft Entra ID) creates a unique identity for applications, enabling secure authentication and authorization to access Azure resources, APIs, and user data. It acts like a service account, allowing apps to obtain tokens, define permissions, and establish trust relationships.
+
+	1. Client Secrets: These are strings of characters that are used to authenticate an application. They are less secure than certificates and are often used in development environments. Client secrets are static and must be securely stored by the application developer. They are not recommended for production environments due to the risk of exposure and the need for frequent changes. 
+	2. Federated Secrets: These are tokens obtained from an external identity provider, such as an OpenID Connect (OIDC) identity provider. They are more secure than client secrets because they are dynamic and do not require the application to manage long-term secrets. Federated secrets are used to authenticate applications without exposing sensitive information.
+
+
+PART 2
+ARM: Azure Resource Manager (ARM)
+Azure Resource Manager (ARM) is the deployment and management service for Microsoft Azure.
+ARM introduces Infrastructure as Code (IaaC), allowing users to define their infrastructure declaratively using JSON-based ARM templates or Bicep files. 
+ 
+ ARM also supports role-based access control (RBAC), tagging for logical organization, and dependency management to ensure resources are deployed in the correct order.
+	Export templates from existing resources for reuse  to resource groups, subscriptions, or tenants.
+	
+	Bicep is a declarative language and is an abstraction over ARM templates, making infrastructure-as-code easier to write and maintain.
+		Key Features of Bicep
+			Simplified Syntax: Compared to JSON, Bicep files are more readable and concise.
+			
+			Type Safety: Provides validation and IntelliSense support in tools like Visual Studio Code.
+			
+			Modularity: Supports reusable modules for better code organization.
+			
+			Idempotency: Ensures consistent deployments without manual state management.
+
+	BICEP VS TERRAFORM:
+	Bicep is designed specifically for Azure, making it an excellent choice for Azure-only
+	Terraform is a multi-cloud tool that supports various cloud providers, including Azure, AWS, Google Cloud, and on-premises environments. This makes Terraform suitable for hybrid or multi-cloud scenarios.
+	Syntax: Bicep offers a simplified and more readable syntax compared to ARM templates.
+	 Terraform uses its own configuration language (HCL)
+	Features: 
+		State Management: Bicep does not provide state management as it relies on Azure Resource Manager (ARM) for state tracking.
+			Terraform uses a state file (terraform.tfstate) to keep track of the resources it manages. This state file can be stored remotely to enable collaboration and state locking.
+
+
+			
+PART 3
+Azure Services Descriptions
+	1. Azure App Service: A fully managed Platform as a Service (PaaS) (PaaS) offering for building, deploying, and scaling web apps, mobile backends, and RESTful APIs without managing the underlying infrastructure (OS, patching, etc.). It supports multiple languages and frameworks, including .NET, Java, Node.js, and Python.
+	2. Azure Application Insights (AppInsights): A feature of Azure Monitor that provides Application Performance Management (APM) and observability for live applications. It automatically detects performance anomalies and includes analytics tools to help diagnose issues, understand user behavior, and monitor performance metrics like request rates, response times, and failure rates.
+	3. Azure Network Security Group (NSG): Acts as a virtual firewall for your network, containing a set of rules that allow or deny inbound and outbound network traffic to and from Azure resources based on source and destination IP addresses, ports, and protocols. NSGs provide granular control over network traffic flow and help enforce security policies.
+	4. Azure Route Table: A set of custom routes, also known as User-Defined Routes (UDRs), that dictate how network traffic should move within a virtual network (VNet). It allows you to override Azure's default system routes to direct traffic to specific endpoints, such as a virtual appliance (e.g., a firewall) or a VPN gateway, enabling complex and secure network topologies.
+	5. Azure SQL Managed Instance: A fully managed relational database service that provides broad SQL Server engine compatibility with the benefits of a fully managed PaaS offering. It's deployed within your own VNet, providing network isolation and enhanced security, making it suitable for modernizing existing SQL Server applications at scale.
+	6. Azure VNet & Subnets (Virtual Network): A VNet is the fundamental building block for your private network in Azure, logically isolated from other networks. Subnets allow you to further segment the VNet's address space into smaller, manageable parts, enabling you to apply specific security and routing rules (like NSGs and Route Tables) to different groups of resources (e.g., separating web, application, and database tiers). 
+
+Deploying an App Together (Presentation Outline)
+You can use these services to deploy a secure, scalable, and observable application in a multi-tier architecture. 
+	1.Network Foundation (VNet & Subnets):
+		Create a secure Azure Virtual Network (VNet) with distinct subnets for your application (App Service), the database (SQL Managed Instance), and potentially a management/security appliance subnet. This provides logical isolation.
+	2. Database Deployment (SQL Managed Instance):
+		Deploy the Azure SQL Managed Instance into its dedicated subnet within the VNet. This ensures the database is not publicly accessible from the internet.
+	3. Application Hosting & Integration (App Service & VNet Integration):
+		3.1 Deploy your application to Azure App Service.
+		3.2 Use Regional VNet Integration to connect the App Service to the VNet via a dedicated integration subnet. This allows your web app to securely communicate with the SQL Managed Instance using private IP addresses over the Azure backbone network, without traversing the public internet.
+	4. Network Security (NSG & Route Table):
+		4.1 Apply Network Security Groups (NSGs) to each subnet (App Service, SQL MI, etc.) to control inbound and outbound traffic.
+		4.2 For example, an NSG on the SQL MI subnet can be configured to only allow inbound traffic from the App Service subnet's IP range on the SQL port (e.g., 1433), denying all other traffic.
+		4.3 Use a Route Table associated with the App Service integration subnet to route all outbound traffic through a central network virtual appliance (NVA) or Azure Firewall for inspection and logging, if required by security policy (known as "forced tunneling").
+	5. Monitoring and Diagnostics (AppInsights):
+		5.1 This provides real-time monitoring of application performance, exceptions, and user behavior. The data collected helps proactively diagnose issues and ensure optimal performance without impacting the application's runtime.
+
+PART 4		
+ YAML:
+	1.YAML stands for YAML Ain't Markup Language.
+	2. YAML is a human-readable data serialization language, just like XML and JSON.
+		serialization is about translating, converting, and wrapping up a data structure in another format.The data in the new format can be stored in a file or transmitted to another application or service over a network.
+	3. Alternatives to YAML:
+		3.1 XML: XML's syntax can be verbose, redundant, and harder to read in comparison with other serialization languages.
+		3.2 JSON offers a much more readable, human-friendly, compact, and simple syntax compared to XML BUT it may not offer the best support for complex configurations.
+		3.3 YAML is an official strict superset of JSON.
+		A valid YAML file can contain JSON, and JSON can transform into YAML.
+		
+	4. extension: .yaml or .yml
+	5. Best Practise: 
+		1. Use consistent indentation (2 spaces is common)
+		2. Leverage YAML Anchors and YAML Aliases for reusability
+		3. Include comments to explain complex configurations
+		4. Use environment variables for sensitive information
+
+
+
+PART 5
+GITHUB ACTIONS:
+GitHub Actions automates your software development lifecycle by running custom scripts (workflows) directly from your repository on code events like push or pull_request. It uses YAML files to define jobs—such as building, testing, and deploying—which are executed on GitHub-hosted virtual machines (runners) and securely authenticate with Azure via service principals or OIDC to deploy applications
+It typically uses a method called Zip Deploy.
+		Core Components & Workflow
+			1. The Trigger (Event): Everything starts with an event in your GitHub repository, such as a code push, a pull request, or a manual button click.
+			2. The Workflow File: You define the automation steps in a YAML file located in the .github/workflows/ directory of your repo.
+			3. The Runner (The Engine): When triggered, GitHub spins up a Runner—a fresh virtual machine (Linux, Windows, or macOS)—to execute your commands.
+			4. Jobs and Steps:
+			A Job is a collection of steps that run on the same runner.
+			Steps are individual tasks, such as checking out your code, building it, or running tests.
+			
+		Connecting to Azure
+			1. Azure Login Action: A specialized step (azure/login) that authenticates the runner with your Azure subscription using credentials stored securely in GitHub Secrets.
+				2. Authentication Methods:
+					2.1 Service Principal: A "hidden user" account with a secret key (Client ID/Secret).
+					2.2 OpenID Connect (OIDC): A more secure, passwordless way for GitHub to verify its identity to Azure without long-lived secrets.
+					2.3 Publish Profile: A simple file containing all credentials for a specific app (common for App Service or Functions).
+			3. Deployment to Azure Services
+				Once authenticated, you use specific Azure Actions from the GitHub Marketplace to perform the actual deployment: 
+				3.1 Azure App Service: Uses azure/webapps-deploy to push web code.
+					1. The Deployment Mechanism (Zip Deploy)
+						By default, when you use the azure/webapps-deploy action, the following happens:
+						Packaging: GitHub Actions takes your built code and packages it into a .zip file on the runner.
+						Transfer: It sends this zip file to an Azure endpoint called Kudu (the engine behind App Service) via an HTTP request.
+						Extraction: Azure App Service unzips the files into the /home/site/wwwroot directory on the server where your app lives.
+						Execution: The App Service then restarts and runs your code directly on the host's runtime (like Node.js, Python, or .NET). 
+					2. When does it use Docker?
+						It only uses Docker if you explicitly choose to deploy a containerized application: 
+						Web App for Containers: If you have an Azure "Web App for Containers," your GitHub Action will build a Docker image, push it to a registry (like Azure Container Registry), and then tell Azure to pull that new image.
+						Internal Runner: As mentioned before, the runner itself might be a VM that has Docker installed, but that is just to run your build scripts.
+				3.2 Azure Functions: Uses azure/functions-action for serverless deployments.
+				3.3 Azure Kubernetes Service (AKS): Uses azure/k8s-deploy to manage containerized apps.
+
+
+VNET:
+	An Azure Virtual Network (VNet) is the core building block for creating private, isolated networks in Azure. It enables secure communication between Azure resources, on-premises infrastructure, and the internet.
+	 It allows communication within the VNet, across VNets (via peering), and with on-premises networks through VPN gateways or ExpressRoute. VNets are defined by an address space (e.g., 10.0.0.0/16) and can include multiple subnets. Security is enforced at the VNet level using tools like Network Security Groups (NSGs) and Azure Firewall.
+
+	Key capabilities include:
+	1. Resource communication: Securely connect VMs, Azure Kubernetes Service, App Service Environments, etc., within the same VNet or across VNets using peering.
+	2. Hybrid connectivity: Link on-premises networks via Site-to-Site VPN, Point-to-Site VPN, or Azure ExpressRoute for private, high-speed connections.
+	3. Traffic control: Use Network Security Groups (NSGs), Application Security Groups, and Network Virtual Appliances for filtering and inspection.
+	4. Custom routing: Override default routes with User-Defined Routes or propagate BGP routes from on-premises.
+	5. Service integration: Access Azure services privately using Private Link or Service Endpoints.
+		
+		Best practices:
+		1. Plan IP addressing: Use non-overlapping CIDR ranges to avoid conflicts in hybrid scenarios.
+		2. Segment with subnets: Group resources by function or security requirements.
+		3. Secure by default: Apply NSGs at subnet or NIC level; restrict inbound/outbound traffic.
+		4. Use Bastion for management: Avoid exposing VMs with public IPs; connect securely over SSL.
+		5. Enable monitoring: Integrate with Azure Monitor and Network Watcher for visibility.
+	
+	A subnet is a logical subdivision of a VNet, created to allocate a portion of the VNet's address space (e.g., 10.0.1.0/24). Subnets help organize resources into distinct groups, enabling better traffic management, resource isolation, and security. For example, you can deploy front-end web servers in one subnet and back-end databases in another. Subnets also integrate with NSGs to enforce security rules at a granular level.
+
+Key Features and Use Cases
+1. Address Space Management: VNets define the overall address space, while subnets allocate specific ranges within it.
+2. Traffic Routing: VNets manage broader traffic policies, while subnets handle internal routing and apply security rules.
+
+Resource Isolation: VNets isolate resources at a network level, while subnets provide finer segmentation for workloads.
+
+Scalability: Subnets allow multi-tier application deployment, separating workloads for better performance and management.
+
+
+5 managed identity
+runtime-mi 
+iac-mi
+shared-iac-mi
+
+
+The "Deep-Dive" Presentation Script
+Slide 1: Title & Introduction
+"Good morning everyone. I’m Rohit Budhe. Today, I’m walking you through a framework for End-to-End Azure Automation. This project was born out of a successful Proof of Concept (POC) I led in my current organisation. My goal was to move beyond simple deployments into a fully automated, zero-trust ecosystem using Bicep and GitHub Actions."
+Slide 2: Project Goals & Metrics
+"We faced a classic 'Click-Ops' problem: manual deployments were taking nearly 2 hours, were prone to human error, and lacked environment parity.
+The Strategy: I implemented a 'Code-First' approach to ensure our Dev, Test, and Prod environments were identical clones.
+The Achievement: We reduced deployment time by 70%, hitting a 15-minute 'Commit-to-Cloud' benchmark. We also achieved zero configuration drift, meaning no manual changes ever 'broke' the environment again."
+Slide 3: High-Level Architecture (ACTION: Show Resource Visualizer)
+"Looking at the architecture, notice the Three-Tier Isolation. (Point to Visualizer).
+Deep Dive Content: I didn't just place resources in a single group. I designed a Hub-and-Spoke-ready architecture. The App Service and SQL Managed Instance sit in separate subnets. This creates a Micro-Perimeter around our data, ensuring that even if the web tier is compromised, the data layer remains shielded behind internal Azure routing."
+Slide 4: Identity & Security (ACTION: Open GitHub Repo / Show Federated Credentials)
+Spend more time here.
+"Security is the foundation of this POC. Instead of using Client Secrets—which are 'long-lived' and a major security debt—I implemented OIDC (OpenID Connect) via Federated Credentials.
+The 'Why': With OIDC, GitHub requests a short-lived access token from Microsoft Entra ID. There are no passwords to rotate, no secrets to leak in logs, and no manual overhead. This moved our security posture from 'Reactive' to 'Proactive' and met our organisation’s Zero-Trust compliance standards."
+Slide 5: Infrastructure as Code (ACTION: Show Bicep Code Modules)
+"I chose Bicep over Terraform for this stack because of its native 'Day-Zero' support for Azure features.
+Deep Dive Content: (Scroll to the Modules). Notice the use of Bicep Modules. I treated infrastructure like software—creating reusable 'Legos' for Networking, Storage, and Compute.
+The Logic: I used Idempotency to our advantage. We can run this code 100 times, and if the environment already matches the code, Bicep makes zero changes. This provides a safety net that manual deployments can never offer."
+Slide 6 & 7: Networking Hardening (THE TECHNICAL PEAK)
+Spend the most time here.
+"Let’s talk about the 'Plumbing.' I segmented the VNet into functional subnets.
+The Challenge: I had to calculate CIDR blocks while accounting for Azure’s 5-IP reservation rule. For smaller subnets, ignoring this leads to immediate deployment failure.
+The 'Secret Sauce': I implemented Regional VNet Integration. This allows the App Service to communicate with the SQL Managed Instance over the Azure Backbone Network using a Private IP.
+The Result: The database has no Public Endpoint. Even with the right password, you cannot reach this database from the internet. It is only accessible via Port 1433 from our specific App Subnet using Network Security Groups (NSGs)."
+Slide 8 & 9: The Automation Pipeline (ACTION: Show YAML Workflow)
+"The GitHub Actions pipeline is defined in YAML. (Highlight the 'Build' and 'Deploy' stages).
+Deep Dive Content: I integrated SQL DACPAC into the pipeline. Traditionally, DBAs run scripts manually. Here, the pipeline compares the 'Source of Truth' in Git to the 'Live Database' and applies only the delta changes. This ensures Schema Evolution is automated and version-controlled, just like our Angular frontend."
+Slide 10: Monitoring & Observability (ACTION: Show Azure App Insights)
+"Post-deployment, we use Azure Application Insights.
+The Value: We track live request rates and dependency failures. In our POC, this allowed us to identify a SQL connection-pooling issue within minutes. This visibility helped us reduce our Mean Time to Recovery (MTTR) by 40%, proving that automation is only half the battle—observability is the other half."
+Slide 12: Challenges & Optimization
+"Every project has hurdles. I resolved a 'missing artifact' issue by consolidating our build/deploy jobs to ensure the /dist folder persisted.
+Cost Management: I also performed SKU Right-Sizing. By moving the SQL Managed Instance to a 'General Purpose' tier instead of 'Business Critical' for the POC, I projected a 25% cost saving while still meeting our performance SLAs."
+Slide 13: Conclusion
+"By combining Bicep, OIDC, and Secure Networking, we’ve built a blueprint that is secure by design and automated by default. This POC is now the standard for how we deploy new microservices in my team. Thank you, I’m ready for your questions."
+Final Guide on "When to Switch Screens"
+Slide 1-3: Stay on the PPT. Focus on the vision.
+Slide 4: Switch to GitHub. Show the "Settings > Secrets and Variables > Actions" page to prove you know where the OIDC trust lives.
+Slide 5-7: Switch to VS Code (Bicep). Show your main.bicep and your modules/ folder. Highlight the NSG rules.
+Slide 8-9: Switch to GitHub Actions Tab. Show a "Green" successful run. Click into a job to show the logs for the Bicep Deployment and Zip Deploy.
+Slide 10: Switch to Azure Portal. Show the Application Map. It’s the most visual way to show the App Service talking to the SQL DB.
+Slide 12-13: Back to PPT for the final summary.
+Pro-Tip: If you have the Bicep code open, be ready to explain the targetScope = 'subscription' or resourceGroup() functions—Leads love to ask about scoping!
+

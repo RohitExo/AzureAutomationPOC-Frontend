@@ -1,0 +1,27 @@
+
+.table-container{
+    margin-top: 6.4rem;
+}
+.add{
+ display:flex;
+ justify-content: right ;
+}
+.submit{
+ display:flex;
+ justify-content: center ;
+}
+.add{
+    margin-top: 12px;
+    margin-bottom: 12px;
+    margin-right: 12px;
+}
+.submit{
+    margin-top: 12px;
+}
+.form{
+    display:flex;
+     justify-content: center;
+      flex-direction: row; 
+      gap: 16px; 
+      margin: 40px;
+}

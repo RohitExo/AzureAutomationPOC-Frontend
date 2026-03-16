@@ -1,0 +1,71 @@
+name: Build Angular 🅰️
+
+on:
+  workflow_dispatch:
+  push:
+    branches: 
+      - R-Budhe_medpace-patch-1
+    pull_request:
+      branches: [main, release/*, feature/*, Release/*, Feature/*, R-Budhe_medpace-patch-1]
+
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
+env:
+    NUGET_URL: "https://nuget.pkg.github.com/MedpaceSoftwareDevelopment/index.json"
+
+jobs:
+  angular-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Clean Install npm dependencies
+        run: npm install
+        working-directory: src
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Angular - Build
+        run: npm run build -- --configuration production --output-path=dist/publish
+        working-directory: src
+
+      - name: Upload Angular artifacts - Publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: angular-publish
+          path: ${{ github.workspace }}/dist/publish/browser/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: angular-build
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download Angular Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: angular-publish
+          path: .
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'app-emp-frontend-001'
+          path: .

@@ -1,8 +1,5 @@
 🚀 Employee Management System: End-to-End Azure Automation POC
-https://img.shields.io/badge/.NET-8.0-blue
-https://img.shields.io/badge/Angular-17+-red
-https://img.shields.io/badge/Azure-Cloud-blue
-https://img.shields.io/badge/GitHub-Actions-green
+
 This repository contains a full-stack Employee Management System built with .NET 8 and Angular 17+.
 It serves as the functional layer for a Zero-Trust Azure deployment framework, leveraging OIDC, Private Networking, and Bicep-driven IaC.
 
